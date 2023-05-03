@@ -1,5 +1,4 @@
 import React from 'react'
-import SVGInline from 'react-svg-inline'
 import styled from 'styled-components'
 
 const SVGWrapper = styled.div`
@@ -18,9 +17,12 @@ const icon = `
 </svg>
 `
 
+const iconBuff = new Buffer(icon);
+const iconBase64 = iconBuff.toString('base64');
+
 const DisconnectedView = () => (
   <SVGWrapper>
-    <SVGInline svg={icon} />
+    <img src='data:image/svg+xml;base64,${iconBase64}' alt="" />
   </SVGWrapper>
 )
 
