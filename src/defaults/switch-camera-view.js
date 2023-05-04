@@ -22,12 +22,11 @@ const icon = `
 </svg>
 `
 
-const iconBuff = new Buffer(icon);
-const iconBase64 = iconBuff.toString('base64');
+const srcString = 'data:image/svg+xml,' + encodeURIComponent(icon)
 
 const SwitchCameraView = (props) => (
   <SVGWrapper {...props}>
-    <img src='data:image/svg+xml;base64,${iconBase64}' alt="" />
+    <img src={srcString} />
   </SVGWrapper>
 )
 
