@@ -171,7 +171,8 @@ export default class VideoRecorder extends Component {
     isVideoInputSupported: null,
     stream: undefined,
     currentDeviceId: null,
-    availableDeviceIds: []
+    videoDevices: [],
+    audioDevices: []
   }
 
   componentDidMount () {
@@ -232,90 +233,106 @@ export default class VideoRecorder extends Component {
   }
 
   turnOnCamera = (deviceId = null) => {
+    this.turnOffCamera()
+
     if (this.props.onTurnOnCamera) {
       this.props.onTurnOnCamera()
     }
 
     navigator.mediaDevices
-      .enumerateDevices()
-      .then((mediaDevices) => {
-        const videoDevices = mediaDevices.filter((x) => x.kind === 'videoinput')
-        if (
-          deviceId &&
-          videoDevices[0] &&
-          videoDevices.find((x) => x.deviceId) === undefined
-        ) {
-          return this.handleError(
-            new ReactVideoRecorderDeviceUnavailableError()
-          )
-        }
-
-        const currentDeviceId =
-          typeof deviceId === 'string' ? deviceId : videoDevices[0].deviceId
-
-        this.setState({
-          isConnecting: true,
-          isReplayingVideo: false,
-          thereWasAnError: false,
-          currentDeviceId,
-          availableDeviceIds: videoDevices.map((x) => x.deviceId),
-          error: null
-        })
-
-        const fallbackContraints = {
-          audio: true,
-          video: true
-        }
-
-        const currentConstraints = merge(
-          {
-            video: {
-              deviceId: {
-                exact: currentDeviceId
-              }
-            }
-          },
-          this.props.constraints
-        )
-
+      .getUserMedia({ audio: true, video: true })
+      .then((s) => {
         navigator.mediaDevices
-          .getUserMedia(currentConstraints)
-          .catch((err) => {
-            // there's a bug in chrome in some windows computers where using `ideal` in the constraints throws a NotReadableError
+          .enumerateDevices()
+          .then((mediaDevices) => {
+            const videoDevices = mediaDevices.filter(
+              (x) => x.kind === 'videoinput'
+            )
+            const audioDevices = mediaDevices.filter(
+              (x) => x.kind === 'audioinput'
+            )
             if (
-              err.name === 'NotReadableError' ||
-              err.name === 'OverconstrainedError'
+              deviceId &&
+              videoDevices[0] &&
+              videoDevices.find((x) => x.deviceId) === undefined
             ) {
-              console.warn(
-                `Got ${err.name}, trying getUserMedia again with fallback constraints`
+              return this.handleError(
+                new ReactVideoRecorderDeviceUnavailableError()
               )
-              return navigator.mediaDevices.getUserMedia(fallbackContraints)
             }
-            throw err
+
+            const currentDeviceId =
+              typeof deviceId === 'string' ? deviceId : videoDevices[0].deviceId
+
+            this.setState({
+              isConnecting: true,
+              isReplayingVideo: false,
+              thereWasAnError: false,
+              currentDeviceId,
+              audioDevices: audioDevices,
+              videoDevices: videoDevices,
+              error: null
+            })
+
+            const fallbackContraints = {
+              audio: true,
+              video: true
+            }
+
+            const currentConstraints = merge(this.props.constraints, {
+              video: {
+                deviceId: {
+                  exact: currentDeviceId
+                }
+              }
+            })
+
+            navigator.mediaDevices
+              .getUserMedia(currentConstraints)
+              .catch((err) => {
+                console.error('catching error', err)
+                // there's a bug in chrome in some windows computers where using `ideal` in the constraints throws a NotReadableError
+                if (
+                  err.name === 'NotReadableError' ||
+                  err.name === 'OverconstrainedError'
+                ) {
+                  console.warn(
+                    `Got ${err.name}, trying getUserMedia again with fallback constraints`
+                  )
+                  return navigator.mediaDevices.getUserMedia(fallbackContraints)
+                }
+                throw err
+              })
+              .then(this.handleSuccess)
+              .catch(this.handleError)
           })
-          .then(this.handleSuccess)
           .catch(this.handleError)
       })
-      .catch(this.handleError)
   }
 
-  handleSwitchCamera = () => {
+  getVideoDeviceOptions = () => {
+    return this.state.videoDevices.map((device) => {
+      // return <option value={device.deviceId} key={device.deviceId} selected={device.deviceId == this.state.currentDeviceId ? "true" : "false"}>{device.deviceId}</option>
+      return { value: device.deviceId, label: device.label }
+    })
+  }
+
+  getAudioDeviceOptions = () => {
+    return this.state.audioDevices.map((device) => {
+      return (
+        <option value={device.deviceId} key={device.deviceId}>
+          {device.deviceId}
+        </option>
+      )
+    })
+  }
+
+  handleSelectCamera = (device) => {
     if (this.props.onSwitchCamera) {
       this.props.onSwitchCamera()
     }
-    const { currentDeviceId, availableDeviceIds } = this.state
-    // Stop media tracks
-    this.stream && this.stream.getTracks().forEach((stream) => stream.stop())
-
-    const index = availableDeviceIds.findIndex((x) => x === currentDeviceId)
-    const maxIndex = availableDeviceIds.length - 1
-
-    if (index < 0) {
-      return this.handleError(new ReactVideoRecorderDeviceUnavailableError())
-    }
-
-    if (index + 1 > maxIndex) return this.turnOnCamera(availableDeviceIds[0])
-    return this.turnOnCamera(availableDeviceIds[index + 1])
+    this.stream && this.stream.getTracks().forEach((track) => track.stop())
+    return this.turnOnCamera(device.value)
   }
 
   turnOffCamera = () => {
@@ -345,6 +362,9 @@ export default class VideoRecorder extends Component {
     if (this.props.onCameraOn) {
       this.props.onCameraOn()
     }
+
+    // document.getElementsByClassName('video').srcObject = this.stream
+    // this.props.stream = stream
 
     // there is probably a better way
     // but this makes sure the start recording button
@@ -740,8 +760,7 @@ export default class VideoRecorder extends Component {
       isCameraOn,
       isConnecting,
       isReplayVideoMuted,
-      isRecording,
-      availableDeviceIds
+      isRecording
     } = this.state
 
     const shouldUseVideoInput =
@@ -795,10 +814,13 @@ export default class VideoRecorder extends Component {
 
     if (isCameraOn) {
       // Enable switch camera button, only if not recording and multiple video sources available
-      const switchCameraControl =
-        availableDeviceIds && availableDeviceIds.length >= 2 && !isRecording ? (
-          <SwitchCameraView onClick={this.handleSwitchCamera} />
-        ) : null
+      const switchCameraControl = !isRecording ? (
+        <SwitchCameraView
+          value={this.state.currentDeviceId}
+          onChange={this.handleSelectCamera}
+          options={this.getVideoDeviceOptions()}
+        />
+      ) : null
 
       return (
         <CameraView key='camera'>
@@ -868,7 +890,7 @@ export default class VideoRecorder extends Component {
           useVideoInput,
 
           onTurnOnCamera: () => this.turnOnCamera(),
-          onSwitchCamera: this.handleSwitchCamera,
+          onSwitchCamera: this.handleSelectCamera,
           onTurnOffCamera: this.turnOffCamera,
           onOpenVideoInput: this.handleOpenVideoInput,
           onStartRecording: this.handleStartRecording,
