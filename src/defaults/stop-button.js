@@ -23,6 +23,7 @@ const Border = styled.div`
   height: 80px;
   width: 80px;
   border-radius: 50%;
+  margin-bottom: 20px;
 `
 
 Button.defaultProps = {

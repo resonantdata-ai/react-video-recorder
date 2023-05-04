@@ -22,6 +22,7 @@ const RecWrapper = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
 `
 
 const ButtonBorder = styled.div`
@@ -29,17 +30,28 @@ const ButtonBorder = styled.div`
   height: 80px;
   width: 80px;
   border-radius: 50%;
+  margin-bottom: 20px;
 `
+const InstructionsWrapper = styled.div`
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 10px;
+`
+
 const Instructions = styled.div`
   font-family: Arial;
   font-size: 14px;
-  color: #ffffff;
+  color: #000000;
   letter-spacing: 1.75px;
   display: flex;
-  margin-bottom: 20px;
 `
 
-const InstuctionsHighlight = styled.div`
+const InstructionsText = styled.p`
+  width: 100%;
+  text-align: center;
+`
+
+const InstuctionsHighlight = styled.span`
   font-weight: 700;
   color: #dc6547;
   padding: 0 5px;
@@ -52,15 +64,19 @@ Button.defaultProps = {
 
 const RecordButton = ({ t, ...props }) => (
   <RecWrapper>
-    <Instructions>
-      <div>{t('PRESS')} </div>
-      <InstuctionsHighlight> {t('REC')} </InstuctionsHighlight>
-      {t('WHEN READY')}
-    </Instructions>
-
     <ButtonBorder>
       <Button {...props} />
     </ButtonBorder>
+
+    <InstructionsWrapper>
+      <Instructions>
+        <InstructionsText>
+          {t('PRESS')}
+          <InstuctionsHighlight> {t('REC')} </InstuctionsHighlight>
+          {t('WHEN READY')}
+        </InstructionsText>
+      </Instructions>
+    </InstructionsWrapper>
   </RecWrapper>
 )
 

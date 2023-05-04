@@ -123,6 +123,7 @@ export default class VideoRecorder extends Component {
     onCameraOn: PropTypes.func,
     onTurnOnCamera: PropTypes.func,
     onSwitchCamera: PropTypes.func,
+    onSwitchAudio: PropTypes.func,
     onTurnOffCamera: PropTypes.func,
     onStartRecording: PropTypes.func,
     onStopRecording: PropTypes.func,
@@ -170,7 +171,8 @@ export default class VideoRecorder extends Component {
     isInlineRecordingSupported: null,
     isVideoInputSupported: null,
     stream: undefined,
-    currentDeviceId: null,
+    currentVideoDeviceId: null,
+    currentAudioDeviceId: null,
     videoDevices: [],
     audioDevices: []
   }
@@ -232,7 +234,7 @@ export default class VideoRecorder extends Component {
     this.isComponentUnmounted = true
   }
 
-  turnOnCamera = (deviceId = null) => {
+  turnOnCamera = () => {
     this.turnOffCamera()
 
     if (this.props.onTurnOnCamera) {
@@ -252,7 +254,7 @@ export default class VideoRecorder extends Component {
               (x) => x.kind === 'audioinput'
             )
             if (
-              deviceId &&
+              this.state.currentVideoDeviceId &&
               videoDevices[0] &&
               videoDevices.find((x) => x.deviceId) === undefined
             ) {
@@ -261,14 +263,16 @@ export default class VideoRecorder extends Component {
               )
             }
 
-            const currentDeviceId =
-              typeof deviceId === 'string' ? deviceId : videoDevices[0].deviceId
-
             this.setState({
               isConnecting: true,
               isReplayingVideo: false,
               thereWasAnError: false,
-              currentDeviceId,
+              currentVideoDeviceId: this.state.currentVideoDeviceId
+                ? this.state.currentVideoDeviceId
+                : videoDevices[0].deviceId,
+              currentAudioDeviceId: this.state.currentAudioDeviceId
+                ? this.state.currentAudioDeviceId
+                : audioDevices[0].deviceId,
               audioDevices: audioDevices,
               videoDevices: videoDevices,
               error: null
@@ -282,10 +286,17 @@ export default class VideoRecorder extends Component {
             const currentConstraints = merge(this.props.constraints, {
               video: {
                 deviceId: {
-                  exact: currentDeviceId
+                  exact: this.state.currentVideoDeviceId
+                }
+              },
+              audio: {
+                deviceId: {
+                  exact: this.state.currentAudioDeviceId
                 }
               }
             })
+
+            console.log('Constraints: ', currentConstraints)
 
             navigator.mediaDevices
               .getUserMedia(currentConstraints)
@@ -312,27 +323,33 @@ export default class VideoRecorder extends Component {
 
   getVideoDeviceOptions = () => {
     return this.state.videoDevices.map((device) => {
-      // return <option value={device.deviceId} key={device.deviceId} selected={device.deviceId == this.state.currentDeviceId ? "true" : "false"}>{device.deviceId}</option>
       return { value: device.deviceId, label: device.label }
     })
   }
 
   getAudioDeviceOptions = () => {
     return this.state.audioDevices.map((device) => {
-      return (
-        <option value={device.deviceId} key={device.deviceId}>
-          {device.deviceId}
-        </option>
-      )
+      return { value: device.deviceId, label: device.label }
     })
   }
 
   handleSelectCamera = (device) => {
+    console.log('selecting video: ', device)
     if (this.props.onSwitchCamera) {
       this.props.onSwitchCamera()
     }
     this.stream && this.stream.getTracks().forEach((track) => track.stop())
-    return this.turnOnCamera(device.value)
+    this.setState({ currentVideoDeviceId: device.value })
+    return this.turnOnCamera()
+  }
+
+  handleSelectAudio = (device) => {
+    if (this.props.onSwitchAudio) {
+      this.props.onSwitchAudio()
+    }
+    this.stream && this.stream.getTracks().forEach((track) => track.stop())
+    this.setState({ currentAudioDeviceId: device.value })
+    return this.turnOnCamera()
   }
 
   turnOffCamera = () => {
@@ -816,9 +833,12 @@ export default class VideoRecorder extends Component {
       // Enable switch camera button, only if not recording and multiple video sources available
       const switchCameraControl = !isRecording ? (
         <SwitchCameraView
-          value={this.state.currentDeviceId}
-          onChange={this.handleSelectCamera}
-          options={this.getVideoDeviceOptions()}
+          valueVideo={this.state.currentVideoDeviceId}
+          onChangeVideo={this.handleSelectCamera}
+          optionsVideo={this.getVideoDeviceOptions()}
+          valueAudio={this.state.currentAudioDeviceId}
+          onChangeAudio={this.handleSelectAudio}
+          optionsAudio={this.getAudioDeviceOptions()}
         />
       ) : null
 
@@ -891,6 +911,7 @@ export default class VideoRecorder extends Component {
 
           onTurnOnCamera: () => this.turnOnCamera(),
           onSwitchCamera: this.handleSelectCamera,
+          onSwitchAudio: this.handleSelectAudio,
           onTurnOffCamera: this.turnOffCamera,
           onOpenVideoInput: this.handleOpenVideoInput,
           onStartRecording: this.handleStartRecording,
