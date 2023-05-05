@@ -35,7 +35,7 @@ const ButtonBorder = styled.div`
 const InstructionsWrapper = styled.div`
   width: 100%;
   background-color: rgba(255, 255, 255, 0.7);
-  padding: 10px;
+  padding: 0;
 `
 
 const Instructions = styled.div`
