@@ -171,8 +171,8 @@ export default class VideoRecorder extends Component {
     isInlineRecordingSupported: null,
     isVideoInputSupported: null,
     stream: undefined,
-    currentVideoDeviceId: null,
-    currentAudioDeviceId: null,
+    currentVideoDeviceId: localStorage.getItem('currentVideoDeviceId') || null,
+    currentAudioDeviceId: localStorage.getItem('currentAudioDeviceId') || null,
     videoDevices: [],
     audioDevices: []
   }
@@ -278,6 +278,15 @@ export default class VideoRecorder extends Component {
               error: null
             })
 
+            localStorage.setItem(
+              'currentVideoDeviceId',
+              this.state.currentVideoDeviceId
+            )
+            localStorage.setItem(
+              'currentAudioDeviceId',
+              this.state.currentAudioDeviceId
+            )
+
             const fallbackContraints = {
               audio: true,
               video: true
@@ -334,12 +343,12 @@ export default class VideoRecorder extends Component {
   }
 
   handleSelectCamera = (device) => {
-    console.log('selecting video: ', device)
     if (this.props.onSwitchCamera) {
       this.props.onSwitchCamera()
     }
     this.stream && this.stream.getTracks().forEach((track) => track.stop())
     this.setState({ currentVideoDeviceId: device.value })
+    localStorage.setItem('currentVideoDeviceId', device.value)
     return this.turnOnCamera()
   }
 
@@ -348,6 +357,7 @@ export default class VideoRecorder extends Component {
       this.props.onSwitchAudio()
     }
     this.stream && this.stream.getTracks().forEach((track) => track.stop())
+    localStorage.setItem('currentAudioDeviceId', device.value)
     this.setState({ currentAudioDeviceId: device.value })
     return this.turnOnCamera()
   }
