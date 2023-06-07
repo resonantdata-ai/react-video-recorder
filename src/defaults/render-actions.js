@@ -64,7 +64,7 @@ const Actions = ({
           onClick={onStopReplaying}
           data-qa='start-replaying'
         >
-          {t('Use another video')}
+          {t('Click here to re-record')}
         </Button>
       )
     }
