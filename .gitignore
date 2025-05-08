@@ -68,3 +68,6 @@ storybook-static
 .npmrc
 
 package-lock.json
+
+# Ignore IDE files
+.idea
